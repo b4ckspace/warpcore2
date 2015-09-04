@@ -34,10 +34,15 @@ struct TimeSchedule {
 #define BRIGHTNESS  40
 #define LED_TYPE    WS2812
 #define COLOR_ORDER GRB
-#define UPDATES_PER_SECOND 100
+#define UPDATES_PER_SECOND 90
 
 #define ONE_WIRE_BUS 2
 
 #define MODE_WARPCORE 0
 #define MODE_BRIGHT_WHITE_LIGHT 1
+#define MODE_ALARM 2
+
+const uint16_t SECOND = 1000;
+const uint16_t MINUTE = (60 * SECOND);
+const uint16_t HOUR   = (60 * MINUTE);
 

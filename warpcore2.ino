@@ -8,6 +8,8 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+#include <SimpleTimer.h>
+
 #include "warpcore2.h"
 
 
@@ -28,20 +30,15 @@ struct OneWireTemperatureSensor temperatureSensors[] = {
   { {0x10, 0x39, 0x2D, 0xCF, 0x02, 0x08, 0x00, 0x0E}, "sensor/temperature/misc/test" }
 };
 
-struct TimeSchedule schedule[] = {
-  { TIME_SCHEDULE_LED_UPDATE, .previousMillis = 0, .intervalMillis = (1000 / UPDATES_PER_SECOND) },
-  { TIME_SCHEDULE_EVERY_SECOND, .previousMillis = 0, .intervalMillis = 1000 },
-  { TIME_SCHEDULE_EVERY_MINUTE, .previousMillis = 0, .intervalMillis = 1000 * 60 },
-};
 
 EthernetClient ethClient;
 PubSubClient mqttClient("mqtt.core.bckspc.de", 1883, mqttMessageReceived, ethClient);
 
-
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
-
+SimpleTimer timer;
+  
 uint8_t offset = 0;
 
 void setup() {
@@ -49,6 +46,9 @@ void setup() {
   Serial.begin(115200);
   Ethernet.begin(mac);
 
+  timer.setInterval(1000 / UPDATES_PER_SECOND, updateLeds);
+  timer.setInterval(300000, readOneWireTemperatures);
+  
   sensors.begin();
   mqttClientConnect();
   
@@ -79,38 +79,12 @@ volatile unsigned long currentMillis = millis();
 
 void loop() {
 
+  timer.run();
+  
   currentMillis = millis();
     
   if (!mqttClient.loop()) {
     mqttClientConnect();
-  } 
-
-  for (uint8_t i = 0; i < ARRAY_LEN(schedule); i++) {
-
-    if ((currentMillis - schedule[i].previousMillis) >= schedule[i].intervalMillis) {
-      
-      switch(schedule[i].id) {
-        case TIME_SCHEDULE_EVERY_SECOND:
-          readOneWireTemperatures();
-        break;
-
-        case TIME_SCHEDULE_EVERY_MINUTE:
-        break;
-
-        case TIME_SCHEDULE_LED_UPDATE:
-        
-          if(currentMode == MODE_BRIGHT_WHITE_LIGHT) {
-            ledRackOpened();
-          } else {
-            ledWarpcore();
-          }
-          
-          FastLED.show();
-          
-        break;
-      }
-      
-    }
   }
 
   for (uint8_t i = 0; i < ARRAY_LEN(pinWatch); i++) {
@@ -156,6 +130,18 @@ void ledRackOpened() {
   }
 }
 
+void ledAlarm() {
+  offset += 1;
+  
+  uint8_t phase = quadwave8(offset);
+  phase = map_range(phase, 0, 255, 70, 255);
+
+  CHSV color = CHSV(34, 255, phase);
+  for(uint16_t i = 0; i < NUM_LEDS; i++) {
+    leds[i] = color;
+  }
+}
+
 void mqttClientConnect() {
 
   if(millis() < mqttConnectNextTryMillis) {
@@ -167,6 +153,7 @@ void mqttClientConnect() {
   if (mqttClient.connect("foo")) {
     mqttConnectNextTryMillis = 0;
     mqttClient.subscribe("tools/warpcore/speed");
+    mqttClient.subscribe("psa/alarm");
   } else {
     mqttConnectNextTryMillis = millis() + 30000;
   }
@@ -187,12 +174,13 @@ void mqttMessageReceived(char* topic, byte* payload, unsigned int length) {
 
   Serial.println(mssg);
 
-  if(length > 3) {
-    // No numbers higher than 999 allowed.
-    return;
+  if(strcmp(topic, "psa/alarm") == 0) {
+    Serial.println("Alarm received!");
+    currentMode = MODE_ALARM;
+    timer.setTimeout(10 * 1000, restoreLedAnimation);  
+  } else if(strcmp(topic, "tools/warpcore/speed") == 0) {
+    speed = (uint8_t) mssg.toInt();
   }
-  
-  speed = mssg.toInt();
 }
 
 void readOneWireTemperatures() {
@@ -220,6 +208,8 @@ void readOneWireTemperatures() {
       
     }
 */
+
+    Serial.println("Reading onewire");
     
     sensors.requestTemperatures();
     for (uint8_t i = 0; i < ARRAY_LEN(temperatureSensors); i++) {
@@ -228,6 +218,23 @@ void readOneWireTemperatures() {
       mqttClient.publish(temperatureSensors[i].mqttTopic, numberConversionBuffer);
     }
 
-    Serial.println("Published temperatures");
+    Serial.print("Published temperatures ");
+    Serial.println(millis());
+}
+
+void updateLeds() {
+  if(currentMode == MODE_BRIGHT_WHITE_LIGHT) {
+    ledRackOpened();
+  } else if(currentMode == MODE_ALARM) {
+    ledAlarm();
+  } else {
+    ledWarpcore();
+  }
+  
+  FastLED.show();
+}
+
+void restoreLedAnimation() {
+  currentMode = MODE_WARPCORE;
 }
 
