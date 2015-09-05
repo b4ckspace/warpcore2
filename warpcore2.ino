@@ -106,9 +106,9 @@ void genericPinWatchCallback(WatchConfig* t, uint8_t state) {
   
   if(strcmp(t->mqttTopic, "sensor/rack/door") == 0) {
     currentMode = (state == HIGH) ? MODE_BRIGHT_WHITE_LIGHT : MODE_WARPCORE;
-    mqttClient.publish(t->mqttTopic, (state == HIGH)? "OPEN" : "CLOSED");
+    mqttPublish(t->mqttTopic, (state == HIGH)? "OPEN" : "CLOSED", true);
   } else {
-    mqttClient.publish(t->mqttTopic, (state == HIGH)? "HIGH" : "LOW");
+    mqttPublish(t->mqttTopic, (state == HIGH)? "HIGH" : "LOW", true);
   }  
 }
 
@@ -159,6 +159,10 @@ void mqttClientConnect() {
   }
 }
 
+void mqttPublish(const char* topic, const char* payload, boolean retain) {
+  mqttClient.publish(topic, (const uint8_t*) payload, strlen(payload), retain);
+}
+
 void mqttMessageReceived(char* topic, byte* payload, unsigned int length) {
   // handle message arrived
 
@@ -175,7 +179,6 @@ void mqttMessageReceived(char* topic, byte* payload, unsigned int length) {
   Serial.println(mssg);
 
   if(strcmp(topic, "psa/alarm") == 0) {
-    Serial.println("Alarm received!");
     currentMode = MODE_ALARM;
     timer.setTimeout(10 * 1000, restoreLedAnimation);  
   } else if(strcmp(topic, "tools/warpcore/speed") == 0) {
@@ -215,7 +218,7 @@ void readOneWireTemperatures() {
     for (uint8_t i = 0; i < ARRAY_LEN(temperatureSensors); i++) {
       float temperature = sensors.getTempC(temperatureSensors[i].deviceAddress);
       dtostrf(temperature, 2, 2, numberConversionBuffer);
-      mqttClient.publish(temperatureSensors[i].mqttTopic, numberConversionBuffer);
+      mqttPublish(temperatureSensors[i].mqttTopic, numberConversionBuffer, true);
     }
 
     Serial.print("Published temperatures ");
