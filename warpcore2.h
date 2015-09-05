@@ -47,9 +47,9 @@ const uint16_t SECOND = 1000;
 const uint16_t MINUTE = (60 * SECOND);
 const uint16_t HOUR   = (60 * MINUTE);
 
-const char MQTT_TOPIC_WARPCORE_SPEED = "tools/warpcore/speed";
-const char MQTT_TOPIC_MEMBER_COUNT = "sensor/space/member/count";
-const char MQTT_TOPIC_ALARM = "psa/alarm";
-const char MQTT_TOPIC_RACK_CONTACT_SENSOR = "sensor/rack/door";
-const char MQTT_TOPIC_TEMPERATURE_TEST = "sensor/temperature/misc/test";
+const char MQTT_TOPIC_WARPCORE_SPEED[] = "tools/warpcore/speed";
+const char MQTT_TOPIC_MEMBER_COUNT[] = "sensor/space/member/count";
+const char MQTT_TOPIC_ALARM[] = "psa/alarm";
+const char MQTT_TOPIC_RACK_CONTACT_SENSOR[] = "sensor/rack/door";
+const char MQTT_TOPIC_TEMPERATURE_TEST[] = "sensor/temperature/misc/test";
 
