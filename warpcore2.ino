@@ -23,11 +23,11 @@ CRGB leds[NUM_LEDS];
 uint8_t speed = 2;
 
 struct WatchConfig pinWatch[] = {
-  {5, "sensor/rack/door", genericPinWatchCallback, NULL}
+  {5, MQTT_TOPIC_RACK_CONTACT_SENSOR, genericPinWatchCallback, NULL}
 };
 
 struct OneWireTemperatureSensor temperatureSensors[] = {
-  { {0x10, 0x39, 0x2D, 0xCF, 0x02, 0x08, 0x00, 0x0E}, "sensor/temperature/misc/test" }
+  { {0x10, 0x39, 0x2D, 0xCF, 0x02, 0x08, 0x00, 0x0E}, MQTT_TOPIC_TEMPERATURE_TEST }
 };
 
 
@@ -104,7 +104,7 @@ void genericPinWatchCallback(WatchConfig* t, uint8_t state) {
   Serial.println(t->pin);
   Serial.println((state == HIGH)? "HIGH" : "LOW");
   
-  if(strcmp(t->mqttTopic, "sensor/rack/door") == 0) {
+  if(strcmp(t->mqttTopic, MQTT_TOPIC_RACK_CONTACT_SENSOR) == 0) {
     currentMode = (state == HIGH) ? MODE_BRIGHT_WHITE_LIGHT : MODE_WARPCORE;
     mqttPublish(t->mqttTopic, (state == HIGH)? "OPEN" : "CLOSED", true);
   } else {
@@ -116,10 +116,11 @@ void ledWarpcore() {
   
   offset += speed;
 
-  for(uint16_t i = 0; i < NUM_LEDS; i++) {
+  for(uint16_t i = 0; i < LEDS_PER_SIDE; i++) {
     uint8_t phase = quadwave8(i * 11 + offset);
     uint8_t hue = (uint8_t) map_range(phase, 0, 255, 120, 170);
     leds[i] = CHSV(hue, 255, 255);
+    leds[i + LEDS_PER_SIDE] = CHSV(hue, 255, 255);
   }
   
 }
@@ -150,10 +151,12 @@ void mqttClientConnect() {
 
   Serial.print("MQTT disconnected...");
   
-  if (mqttClient.connect("foo")) {
+  if (mqttClient.connect("WarpCore2")) {
+    
     mqttConnectNextTryMillis = 0;
-    mqttClient.subscribe("tools/warpcore/speed");
-    mqttClient.subscribe("psa/alarm");
+    mqttClient.subscribe(MQTT_TOPIC_WARPCORE_SPEED);
+    mqttClient.subscribe(MQTT_TOPIC_MEMBER_COUNT);
+    mqttClient.subscribe(MQTT_TOPIC_ALARM);
   } else {
     mqttConnectNextTryMillis = millis() + 30000;
   }
@@ -164,7 +167,6 @@ void mqttPublish(const char* topic, const char* payload, boolean retain) {
 }
 
 void mqttMessageReceived(char* topic, byte* payload, unsigned int length) {
-  // handle message arrived
 
   Serial.print("MQTT topic: ");
   Serial.print(topic);
@@ -178,10 +180,10 @@ void mqttMessageReceived(char* topic, byte* payload, unsigned int length) {
 
   Serial.println(mssg);
 
-  if(strcmp(topic, "psa/alarm") == 0) {
+  if(strcmp(topic, MQTT_TOPIC_ALARM) == 0) {
     currentMode = MODE_ALARM;
     timer.setTimeout(10 * 1000, restoreLedAnimation);  
-  } else if(strcmp(topic, "tools/warpcore/speed") == 0) {
+  } else if(strcmp(topic, MQTT_TOPIC_WARPCORE_SPEED) == 0) {
     speed = (uint8_t) mssg.toInt();
   }
 }

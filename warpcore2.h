@@ -30,8 +30,9 @@ struct TimeSchedule {
 #define ARRAY_LEN(a) sizeof(a)/sizeof(a[0])
 
 #define LED_PIN     3
-#define NUM_LEDS    108
-#define BRIGHTNESS  40
+#define NUM_LEDS    216 //108
+#define LEDS_PER_SIDE 108
+#define BRIGHTNESS  200
 #define LED_TYPE    WS2812
 #define COLOR_ORDER GRB
 #define UPDATES_PER_SECOND 90
@@ -45,4 +46,10 @@ struct TimeSchedule {
 const uint16_t SECOND = 1000;
 const uint16_t MINUTE = (60 * SECOND);
 const uint16_t HOUR   = (60 * MINUTE);
+
+const char MQTT_TOPIC_WARPCORE_SPEED = "tools/warpcore/speed";
+const char MQTT_TOPIC_MEMBER_COUNT = "sensor/space/member/count";
+const char MQTT_TOPIC_ALARM = "psa/alarm";
+const char MQTT_TOPIC_RACK_CONTACT_SENSOR = "sensor/rack/door";
+const char MQTT_TOPIC_TEMPERATURE_TEST = "sensor/temperature/misc/test";
 
