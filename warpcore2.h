@@ -56,6 +56,6 @@ const char MQTT_TOPIC_ALARM[] = "psa/alarm";
 const char MQTT_TOPIC_RACK_CONTACT_SENSOR[] = "sensor/rack/door";
 const char MQTT_TOPIC_TEMPERATURE_TEST[] = "sensor/temperature/misc/test";
 
-const char SENSOR_VALUE_OPEN[] = "OPEN";
-const char SENSOR_VALUE_CLOSED[] = "CLOSED";
+const char SENSOR_VALUE_OPEN[] = "open";
+const char SENSOR_VALUE_CLOSED[] = "closed";
 
