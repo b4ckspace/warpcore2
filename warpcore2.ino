@@ -144,9 +144,9 @@ void ledAlarm() {
   offset += 1;
   
   uint8_t phase = quadwave8(offset);
-  phase = map_range(phase, 0, 255, 30, 255);
+  phase = map_range(phase, 0, 255, 60, 255);
 
-  CHSV color = CHSV(34, 255, phase);
+  CHSV color = CHSV(5, 255, phase);
   for(uint16_t i = 0; i < NUM_LEDS; i++) {
     leds[i] = color;
   }
@@ -198,19 +198,19 @@ void mqttMessageReceived(char* topic, byte* payload, unsigned int length) {
   } else if(str_equals(topic, MQTT_TOPIC_DOOR_LOCK)) {
     if(mssg == SENSOR_VALUE_OPEN) {
       doorStatusOpen = true;
-      //FastLED.setBrightness(BRIGHTNESS_FULL);
+      FastLED.setBrightness(BRIGHTNESS_FULL);
     } else {
       doorStatusOpen = false;
-      //FastLED.setBrightness((lastMemberCount == 0)? BRIGHTNESS_OFF : BRIGHTNESS_DIMMED);
+      FastLED.setBrightness((lastMemberCount == 0)? BRIGHTNESS_OFF : BRIGHTNESS_DIMMED);
     }
 
   } else if(str_equals(topic, MQTT_TOPIC_MEMBER_COUNT)) {
 
     lastMemberCount = mssg.toInt();
     if(lastMemberCount == 0) {
-      //FastLED.setBrightness(BRIGHTNESS_OFF);
+      FastLED.setBrightness(BRIGHTNESS_OFF);
     } else {
-      //FastLED.setBrightness((doorStatusOpen)? BRIGHTNESS_FULL : BRIGHTNESS_DIMMED);
+      FastLED.setBrightness((doorStatusOpen)? BRIGHTNESS_FULL : BRIGHTNESS_DIMMED);
     }
     
   } else if(str_equals(topic, MQTT_TOPIC_WARPCORE_SPEED)) {
