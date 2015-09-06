@@ -19,11 +19,14 @@ unsigned long mqttConnectNextTryMillis = 0;
 
 char numberConversionBuffer[10] = {0};
 
+boolean doorStatusOpen = false;
+uint8_t lastMemberCount = 0;
+
 CRGB leds[NUM_LEDS];
 uint8_t speed = 2;
 
 struct WatchConfig pinWatch[] = {
-  {5, MQTT_TOPIC_RACK_CONTACT_SENSOR, genericPinWatchCallback, NULL}
+  {7, MQTT_TOPIC_RACK_CONTACT_SENSOR, genericPinWatchCallback, NULL}
 };
 
 struct OneWireTemperatureSensor temperatureSensors[] = {
@@ -63,7 +66,7 @@ void setup() {
 
   delay(500); // power-up safety delay
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  FastLED.setBrightness(BRIGHTNESS);
+  FastLED.setBrightness(BRIGHTNESS_FULL);
 
   Serial.println("Okay!");
 }
@@ -106,7 +109,7 @@ void genericPinWatchCallback(WatchConfig* t, uint8_t state) {
   
   if(strcmp(t->mqttTopic, MQTT_TOPIC_RACK_CONTACT_SENSOR) == 0) {
     currentMode = (state == HIGH) ? MODE_BRIGHT_WHITE_LIGHT : MODE_WARPCORE;
-    mqttPublish(t->mqttTopic, (state == HIGH)? "OPEN" : "CLOSED", true);
+    mqttPublish(t->mqttTopic, (state == HIGH)? SENSOR_VALUE_OPEN : SENSOR_VALUE_CLOSED, true);
   } else {
     mqttPublish(t->mqttTopic, (state == HIGH)? "HIGH" : "LOW", true);
   }  
@@ -116,11 +119,17 @@ void ledWarpcore() {
   
   offset += speed;
 
+  CHSV color;
+
   for(uint16_t i = 0; i < LEDS_PER_SIDE; i++) {
-    uint8_t phase = quadwave8(i * 11 + offset);
-    uint8_t hue = (uint8_t) map_range(phase, 0, 255, 120, 170);
-    leds[i] = CHSV(hue, 255, 255);
-    leds[i + LEDS_PER_SIDE] = CHSV(hue, 255, 255);
+    uint8_t phase = quadwave8(i * 8 + offset);
+    uint8_t hue = (uint8_t) map_range(phase, 0, 255, 105, 170);
+    uint8_t volume = (uint8_t) map_range(hue, 105, 170, 255, 60);
+
+    color = CHSV(hue, 255, volume);
+    
+    leds[i] = color;
+    leds[i + LEDS_PER_SIDE] = color;
   }
   
 }
@@ -135,13 +144,14 @@ void ledAlarm() {
   offset += 1;
   
   uint8_t phase = quadwave8(offset);
-  phase = map_range(phase, 0, 255, 70, 255);
+  phase = map_range(phase, 0, 255, 30, 255);
 
   CHSV color = CHSV(34, 255, phase);
   for(uint16_t i = 0; i < NUM_LEDS; i++) {
     leds[i] = color;
   }
 }
+
 
 void mqttClientConnect() {
 
@@ -156,6 +166,7 @@ void mqttClientConnect() {
     mqttConnectNextTryMillis = 0;
     mqttClient.subscribe(MQTT_TOPIC_WARPCORE_SPEED);
     mqttClient.subscribe(MQTT_TOPIC_MEMBER_COUNT);
+    mqttClient.subscribe(MQTT_TOPIC_DOOR_LOCK);
     mqttClient.subscribe(MQTT_TOPIC_ALARM);
   } else {
     mqttConnectNextTryMillis = millis() + 30000;
@@ -180,10 +191,29 @@ void mqttMessageReceived(char* topic, byte* payload, unsigned int length) {
 
   Serial.println(mssg);
 
-  if(strcmp(topic, MQTT_TOPIC_ALARM) == 0) {
+  if(str_equals(topic, MQTT_TOPIC_ALARM)) {
     currentMode = MODE_ALARM;
-    timer.setTimeout(10 * 1000, restoreLedAnimation);  
-  } else if(strcmp(topic, MQTT_TOPIC_WARPCORE_SPEED) == 0) {
+    timer.setTimeout(10 * 1000, restoreLedAnimation);
+      
+  } else if(str_equals(topic, MQTT_TOPIC_DOOR_LOCK)) {
+    if(mssg == SENSOR_VALUE_OPEN) {
+      doorStatusOpen = true;
+      //FastLED.setBrightness(BRIGHTNESS_FULL);
+    } else {
+      doorStatusOpen = false;
+      //FastLED.setBrightness((lastMemberCount == 0)? BRIGHTNESS_OFF : BRIGHTNESS_DIMMED);
+    }
+
+  } else if(str_equals(topic, MQTT_TOPIC_MEMBER_COUNT)) {
+
+    lastMemberCount = mssg.toInt();
+    if(lastMemberCount == 0) {
+      //FastLED.setBrightness(BRIGHTNESS_OFF);
+    } else {
+      //FastLED.setBrightness((doorStatusOpen)? BRIGHTNESS_FULL : BRIGHTNESS_DIMMED);
+    }
+    
+  } else if(str_equals(topic, MQTT_TOPIC_WARPCORE_SPEED)) {
     speed = (uint8_t) mssg.toInt();
   }
 }
