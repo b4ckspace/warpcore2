@@ -124,7 +124,7 @@ void ledWarpcore() {
   for(uint16_t i = 0; i < LEDS_PER_SIDE; i++) {
     uint8_t phase = quadwave8(i * 8 + offset);
     uint8_t hue = (uint8_t) map_range(phase, 0, 255, 105, 170);
-    uint8_t volume = (uint8_t) map_range(hue, 105, 170, 255, 60);
+    uint8_t volume = (uint8_t) map_range(hue, 105, 170, 210, 50);
 
     color = CHSV(hue, 255, volume);
     
